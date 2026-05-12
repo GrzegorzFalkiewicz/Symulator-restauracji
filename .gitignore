@@ -1,0 +1,15 @@
+build/
+*.pro.user
+*.user
+*.o
+*.obj
+*.exe
+*.dll
+*.pdb
+*.ilk
+Makefile
+Makefile.*
+.qmake.stash
+.qtc_clangd/
+debug/
+release/
