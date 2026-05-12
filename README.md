@@ -1,6 +1,6 @@
 # Wielowatkowy symulator restauracji
 
-Projekt Qt/C++ przygotowany na podstawie wstepnego planu pracy. Aplikacja pokazuje uproszczony obieg zamowien w restauracji:
+Projekt Qt/C++ Aplikacja pokazuje uproszczony obieg zamowien w restauracji:
 
 - klienci generuja nowe zamowienia,
 - kelnerzy przekazuja zamowienia do kuchni i odbieraja gotowe dania,
@@ -9,7 +9,6 @@ Projekt Qt/C++ przygotowany na podstawie wstepnego planu pracy. Aplikacja pokazu
 
 ## Najwazniejsze pliki
 
-- `src/mainwindow.*` - interfejs graficzny i prezentacja stanu symulacji,
 - `src/simulationengine.*` - watki, kolejki, mutexy, zmienne warunkowe i logika obiegu zamowien,
 - `src/order.h` - prosty model zamowienia,
 - `RestaurantSimulator.pro` - konfiguracja projektu Qt.
