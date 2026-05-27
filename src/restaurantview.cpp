@@ -72,12 +72,15 @@ void RestaurantView::updateWorkers(const QVector<WorkerSnapshot>& snapshots, Wor
 QPointF RestaurantView::getWorkerTargetPos(WorkerItem::Role role, const QString& status, int index)
 {
     if (role == WorkerItem::Role::Cook) {
+        if (status.contains("lade") || status.contains("Oddal")) {
+            return QPointF(250 + (index * 30), 150); // Near counter from kitchen side
+        }
         // Cooks usually stay in kitchen
         return QPointF(50 + index * 40, 100 + (index % 2) * 100);
     } else {
         // Waiters move
         if (status.contains("Przekazuje") || status.contains("odbiera")) {
-            return QPointF(350 + (index * 30), 150); // Near counter
+            return QPointF(380 + (index * 30), 150); // Near counter from waiter side
         } else if (status.contains("Dostarcza") || status.contains("Obsluzyl") || status.contains("klienta")) {
             return QPointF(750, 100 + index * 100); // At tables
         } else {

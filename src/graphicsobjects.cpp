@@ -23,24 +23,49 @@ void WorkerItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option
 
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // Body
-    QColor color = (role_ == Role::Cook) ? QColor("#e06c75") : QColor("#61afef");
+    QColor baseColor = (role_ == Role::Cook) ? QColor("#e06c75") : QColor("#61afef");
     if (status_ == "Bezczynny" || status_ == "Zatrzymany") {
-        color = color.darker(150);
+        baseColor = baseColor.darker(150);
     }
 
-    painter->setBrush(color);
+    // --- Draw Body Icon ---
     painter->setPen(Qt::NoPen);
-    painter->drawEllipse(-20, -20, 40, 40);
+    
+    // Body (trapezoid/rounded rect for shoulders)
+    painter->setBrush(baseColor);
+    painter->drawRoundedRect(-15, -5, 30, 25, 5, 5);
+    
+    // Head
+    painter->drawEllipse(-10, -22, 20, 20);
 
-    // Hat / Detail
-    painter->setBrush(Qt::white);
+    // --- Role Specific Details ---
     if (role_ == Role::Cook) {
-        painter->drawRect(-10, -28, 20, 10); // Chef hat
+        // Chef Hat
+        painter->setBrush(Qt::white);
+        painter->setPen(QPen(Qt::lightGray, 0.5));
+        painter->drawRoundedRect(-12, -35, 24, 15, 3, 3);
+        painter->drawEllipse(-14, -40, 10, 10);
+        painter->drawEllipse(-5, -42, 10, 10);
+        painter->drawEllipse(4, -40, 10, 10);
     } else {
-        painter->drawRect(-15, -18, 30, 4); // Waiter tie/apron detail
+        // Waiter Bowtie
+        painter->setBrush(QColor("#282c34"));
+        QPainterPath bowtie;
+        bowtie.moveTo(-6, -2);
+        bowtie.lineTo(6, 4);
+        bowtie.lineTo(6, -2);
+        bowtie.lineTo(-6, 4);
+        bowtie.closeSubpath();
+        painter->drawPath(bowtie);
+        
+        // Shirt front (white triangle)
+        painter->setBrush(Qt::white);
+        QPolygonF shirt;
+        shirt << QPointF(-4, -5) << QPointF(4, -5) << QPointF(0, 5);
+        painter->drawPolygon(shirt);
     }
 
+    // --- Text Details ---
     // Name
     painter->setPen(Qt::white);
     QFont font = painter->font();

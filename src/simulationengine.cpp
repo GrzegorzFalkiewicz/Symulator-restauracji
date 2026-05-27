@@ -201,6 +201,17 @@ void SimulationEngine::cookLoop(int index)
             if (stopRequested_) {
                 break;
             }
+            cooks_[index].status = "Wystawia na lade";
+        }
+        postUpdate();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(randomDelayMs(600, 1000)));
+
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stopRequested_) {
+                break;
+            }
             readyOrders_.push(order);
             cooks_[index].status = "Oddal danie";
             cooks_[index].orderId = order.id;

@@ -130,24 +130,40 @@ void MainWindow::applySnapshot(const SimulationSnapshot& snapshot)
     fillWorkerTable(cooksTable_, snapshot.cooks);
     fillWorkerTable(waitersTable_, snapshot.waiters);
 
-    logList_->clear();
-    for (const auto& entry : snapshot.log) {
-        logList_->addItem(entry);
+    // Optimized log update: only update if count or top entry changed
+    if (logList_->count() != snapshot.log.size() || (snapshot.log.size() > 0 && logList_->item(0)->text() != snapshot.log.at(0))) {
+        logList_->setUpdatesEnabled(false);
+        logList_->clear();
+        for (const auto& entry : snapshot.log) {
+            logList_->addItem(entry);
+        }
+        logList_->setUpdatesEnabled(true);
     }
-    logList_->scrollToBottom();
 
     restaurantView_->updateSnapshot(snapshot);
 }
 
 void MainWindow::fillWorkerTable(QTableWidget* table, const QVector<WorkerSnapshot>& workers)
 {
-    table->setRowCount(workers.size());
+    if (table->rowCount() != workers.size()) {
+        table->setRowCount(workers.size());
+    }
+    
     for (int row = 0; row < workers.size(); ++row) {
         const auto& worker = workers.at(row);
-        table->setItem(row, 0, new QTableWidgetItem(worker.name));
-        table->setItem(row, 1, new QTableWidgetItem(worker.status));
-        table->setItem(row, 2, new QTableWidgetItem(worker.orderId > 0
-            ? QString("#%1").arg(worker.orderId)
-            : "-"));
+        
+        auto setItemText = [&](int col, const QString& text) {
+            QTableWidgetItem* item = table->item(row, col);
+            if (!item) {
+                item = new QTableWidgetItem(text);
+                table->setItem(row, col, item);
+            } else if (item->text() != text) {
+                item->setText(text);
+            }
+        };
+
+        setItemText(0, worker.name);
+        setItemText(1, worker.status);
+        setItemText(2, worker.orderId > 0 ? QString("#%1").arg(worker.orderId) : "-");
     }
 }
