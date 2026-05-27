@@ -1,6 +1,9 @@
 #include "simulationengine.h"
 
 #include <QDateTime>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMetaObject>
 
 #include <chrono>
@@ -11,6 +14,7 @@ namespace {
 constexpr int CookCount = 3;
 constexpr int WaiterCount = 2;
 constexpr int MaxLogEntries = 80;
+constexpr quint16 ServerPort = 12345;
 
 std::mt19937& randomEngine()
 {
@@ -24,6 +28,24 @@ std::mt19937& randomEngine()
 SimulationEngine::SimulationEngine(QObject* receiver, SnapshotCallback callback)
     : receiver_(receiver), callback_(std::move(callback))
 {
+    // Initialize Distributed Server
+    tcpServer_ = new QTcpServer(receiver_);
+    QObject::connect(tcpServer_, &QTcpServer::newConnection, [this] {
+        while (tcpServer_->hasPendingConnections()) {
+            QTcpSocket* socket = tcpServer_->nextPendingConnection();
+            clients_.append(socket);
+            QObject::connect(socket, &QTcpSocket::disconnected, [this, socket] {
+                clients_.removeAll(socket);
+                socket->deleteLater();
+            });
+            addLogLocked(QString("Nowy klient rozproszony polaczony: %1").arg(socket->peerAddress().toString()));
+        }
+    });
+    
+    if (tcpServer_->listen(QHostAddress::Any, ServerPort)) {
+        addLogLocked(QString("Serwer rozproszony nasluchuje na porcie %1").arg(ServerPort));
+    }
+
     std::lock_guard<std::mutex> lock(mutex_);
     resetLocked();
 }
@@ -45,10 +67,12 @@ void SimulationEngine::start()
         for (auto& cook : cooks_) {
             cook.status = "Czeka na zamowienie";
             cook.orderId = 0;
+            cook.dish = "";
         }
         for (auto& waiter : waiters_) {
             waiter.status = "Czeka na klienta";
             waiter.orderId = 0;
+            waiter.dish = "";
         }
         addLogLocked("Symulacja uruchomiona");
     }
@@ -89,10 +113,12 @@ void SimulationEngine::stop()
         for (auto& cook : cooks_) {
             cook.status = "Zatrzymany";
             cook.orderId = 0;
+            cook.dish = "";
         }
         for (auto& waiter : waiters_) {
             waiter.status = "Zatrzymany";
             waiter.orderId = 0;
+            waiter.dish = "";
         }
         addLogLocked("Symulacja zatrzymana");
     }
@@ -110,6 +136,17 @@ void SimulationEngine::reset()
     postUpdate();
 }
 
+void SimulationEngine::setSpeedMultiplier(float multiplier)
+{
+    speedMultiplier_.store(multiplier);
+}
+
+void SimulationEngine::sleepScaled(int ms)
+{
+    int scaledMs = static_cast<int>(ms / speedMultiplier_.load());
+    std::this_thread::sleep_for(std::chrono::milliseconds(scaledMs));
+}
+
 void SimulationEngine::resetLocked()
 {
     newOrders_ = std::queue<Order>{};
@@ -123,10 +160,10 @@ void SimulationEngine::resetLocked()
     cooks_.clear();
     waiters_.clear();
     for (int i = 0; i < CookCount; ++i) {
-        cooks_.push_back({QString("Kucharz %1").arg(i + 1), "Bezczynny", 0});
+        cooks_.push_back({QString("Kucharz %1").arg(i + 1), "Bezczynny", 0, ""});
     }
     for (int i = 0; i < WaiterCount; ++i) {
-        waiters_.push_back({QString("Kelner %1").arg(i + 1), "Bezczynny", 0});
+        waiters_.push_back({QString("Kelner %1").arg(i + 1), "Bezczynny", 0, ""});
     }
 }
 
@@ -145,7 +182,8 @@ void SimulationEngine::generatorLoop()
 {
     while (!stopRequested_) {
         std::unique_lock<std::mutex> timerLock(mutex_);
-        timerCv_.wait_for(timerLock, std::chrono::milliseconds(900), [this] {
+        int waitMs = static_cast<int>(900 / speedMultiplier_.load());
+        timerCv_.wait_for(timerLock, std::chrono::milliseconds(waitMs), [this] {
             return stopRequested_.load();
         });
         if (stopRequested_) {
@@ -185,11 +223,23 @@ void SimulationEngine::cookLoop(int index)
             kitchenOrders_.pop();
             cooks_[index].status = "Przygotowuje";
             cooks_[index].orderId = order.id;
+            cooks_[index].dish = order.dish;
             addLogLocked(QString("Kucharz rozpoczal zamowienie #%1").arg(order.id));
         }
         postUpdate();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(randomDelayMs(1800, 3600)));
+        sleepScaled(randomDelayMs(1800, 3600));
+
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (stopRequested_) {
+                break;
+            }
+            cooks_[index].status = "Wystawia na lade";
+        }
+        postUpdate();
+
+        sleepScaled(randomDelayMs(600, 1000));
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -199,6 +249,7 @@ void SimulationEngine::cookLoop(int index)
             readyOrders_.push(order);
             cooks_[index].status = "Oddal danie";
             cooks_[index].orderId = order.id;
+            cooks_[index].dish = order.dish;
             addLogLocked(QString("Gotowe danie dla zamowienia #%1").arg(order.id));
         }
         newOrderCv_.notify_one();
@@ -230,12 +281,14 @@ void SimulationEngine::waiterLoop(int index)
                 deliveringReadyOrder = true;
                 waiters_[index].status = "Dostarcza danie";
                 waiters_[index].orderId = order.id;
+                waiters_[index].dish = order.dish;
                 addLogLocked(QString("Kelner odbiera gotowe zamowienie #%1").arg(order.id));
             } else if (!newOrders_.empty()) {
                 order = newOrders_.front();
                 newOrders_.pop();
                 waiters_[index].status = "Przekazuje do kuchni";
                 waiters_[index].orderId = order.id;
+                waiters_[index].dish = order.dish;
                 addLogLocked(QString("Kelner przyjal zamowienie #%1").arg(order.id));
             } else {
                 continue;
@@ -243,8 +296,7 @@ void SimulationEngine::waiterLoop(int index)
         }
         postUpdate();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(
-            deliveringReadyOrder ? randomDelayMs(700, 1300) : randomDelayMs(500, 1100)));
+        sleepScaled(deliveringReadyOrder ? randomDelayMs(700, 1300) : randomDelayMs(500, 1100));
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -283,9 +335,52 @@ void SimulationEngine::postUpdate()
         return;
     }
 
-    QMetaObject::invokeMethod(receiver_, [callback = callback_, snapshot] {
+    QMetaObject::invokeMethod(receiver_, [this, callback = callback_, snapshot] {
         callback(snapshot);
+        broadcastSnapshot(snapshot);
     }, Qt::QueuedConnection);
+}
+
+void SimulationEngine::broadcastSnapshot(const SimulationSnapshot& snapshot)
+{
+    if (clients_.isEmpty()) return;
+
+    QJsonObject obj;
+    obj["running"] = snapshot.running;
+    obj["created"] = snapshot.createdOrders;
+    obj["served"] = snapshot.servedOrders;
+    obj["waiting"] = snapshot.waitingOrders;
+    obj["kitchen"] = snapshot.kitchenOrders;
+    obj["ready"] = snapshot.readyOrders;
+
+    QJsonArray cooks;
+    for (const auto& c : snapshot.cooks) {
+        QJsonObject co;
+        co["name"] = c.name;
+        co["status"] = c.status;
+        co["orderId"] = c.orderId;
+        co["dish"] = c.dish;
+        cooks.append(co);
+    }
+    obj["cooks"] = cooks;
+
+    QJsonArray waiters;
+    for (const auto& w : snapshot.waiters) {
+        QJsonObject wo;
+        wo["name"] = w.name;
+        wo["status"] = w.status;
+        wo["orderId"] = w.orderId;
+        wo["dish"] = w.dish;
+        waiters.append(wo);
+    }
+    obj["waiters"] = waiters;
+
+    QJsonDocument doc(obj);
+    QByteArray data = doc.toJson(QJsonDocument::Compact) + "\n";
+
+    for (QTcpSocket* client : clients_) {
+        client->write(data);
+    }
 }
 
 SimulationSnapshot SimulationEngine::snapshotLocked() const
@@ -299,10 +394,10 @@ SimulationSnapshot SimulationEngine::snapshotLocked() const
     snapshot.servedOrders = servedOrders_;
 
     for (const auto& cook : cooks_) {
-        snapshot.cooks.push_back({cook.name, cook.status, cook.orderId});
+        snapshot.cooks.push_back({cook.name, cook.status, cook.orderId, cook.dish});
     }
     for (const auto& waiter : waiters_) {
-        snapshot.waiters.push_back({waiter.name, waiter.status, waiter.orderId});
+        snapshot.waiters.push_back({waiter.name, waiter.status, waiter.orderId, waiter.dish});
     }
     snapshot.log = log_;
     return snapshot;

@@ -15,10 +15,14 @@
 #include <thread>
 #include <vector>
 
+#include <QTcpServer>
+#include <QTcpSocket>
+
 struct WorkerSnapshot {
     QString name;
     QString status;
     int orderId = 0;
+    QString dish;
 };
 
 struct SimulationSnapshot {
@@ -43,12 +47,14 @@ public:
     void start();
     void stop();
     void reset();
+    void setSpeedMultiplier(float multiplier);
 
 private:
     struct WorkerState {
         QString name;
         QString status = "Bezczynny";
         int orderId = 0;
+        QString dish;
     };
 
     void resetLocked();
@@ -62,10 +68,15 @@ private:
     void addLogLocked(const QString& message);
     QString randomDish();
     int randomDelayMs(int minMs, int maxMs);
+    void sleepScaled(int ms);
+    void broadcastSnapshot(const SimulationSnapshot& snapshot);
 
     QObject* receiver_;
     SnapshotCallback callback_;
 
+    QTcpServer* tcpServer_ = nullptr;
+    QList<QTcpSocket*> clients_;
+    
     mutable std::mutex mutex_;
     std::condition_variable newOrderCv_;
     std::condition_variable kitchenCv_;
@@ -81,6 +92,7 @@ private:
 
     std::atomic_bool running_{false};
     std::atomic_bool stopRequested_{false};
+    std::atomic<float> speedMultiplier_{1.0f};
     std::thread generatorThread_;
     std::vector<std::thread> cookThreads_;
     std::vector<std::thread> waiterThreads_;
