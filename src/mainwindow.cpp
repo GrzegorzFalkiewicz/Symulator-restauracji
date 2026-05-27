@@ -56,7 +56,7 @@ void MainWindow::buildUi()
     auto* statsGroup = new QGroupBox("Stan zamowien");
     auto* statsGrid = new QGridLayout(statsGroup);
     
-    auto createStatLabel = [this](const QString& text, QLabel*& valLabel, int r, int c) {
+    auto createStatLabel = [this, statsGrid](const QString& text, QLabel*& valLabel, int r, int c) {
         statsGrid->addWidget(new QLabel(text), r, c);
         valLabel = new QLabel("0");
         valLabel->setObjectName("statValue");
