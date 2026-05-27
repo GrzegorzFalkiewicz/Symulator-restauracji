@@ -85,7 +85,20 @@ void ClientWindow::setupUi()
     // Dark theme for client
     setStyleSheet(R"(
         QWidget { background-color: #21252b; color: #abb2bf; font-size: 10pt; }
-        QGroupBox { border: 1px solid #3e4451; margin-top: 10px; font-weight: bold; color: #61afef; }
+        QGroupBox { 
+            border: 1px solid #3e4451; 
+            margin-top: 20px; 
+            font-weight: bold; 
+            color: #61afef; 
+            border-radius: 4px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            left: 10px;
+            padding: 0 5px;
+            top: 0px;
+        }
         QPushButton { background-color: #3e4451; padding: 5px; border-radius: 3px; color: white; min-width: 70px; }
         QPushButton:hover { background-color: #4b5263; }
         QLineEdit { background-color: #282c34; border: 1px solid #3e4451; padding: 3px; color: #d7dae0; border-radius: 2px; }
