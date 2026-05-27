@@ -58,7 +58,7 @@ void ClientWindow::setupUi()
     statsGrid->addWidget(servedLabel_, 0, 3);
     statsGrid->addWidget(new QLabel("W kolejce kuchni:"), 1, 0);
     statsGrid->addWidget(queueLabel_, 1, 1);
-    root->addWidget(statsGroup);
+    root->addWidget(statsGroup, 0); // No stretch for stats
 
     // Cooks Table
     auto* cooksGroup = new QGroupBox("Stan kucharzy");
@@ -66,8 +66,9 @@ void ClientWindow::setupUi()
     cooksTable_ = new QTableWidget(0, 4);
     cooksTable_->setHorizontalHeaderLabels({"Kucharz", "Stan", "ID", "Danie"});
     cooksTable_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    cooksTable_->setMinimumHeight(150);
     cooksLayout->addWidget(cooksTable_);
-    root->addWidget(cooksGroup);
+    root->addWidget(cooksGroup, 1); // Give stretch factor 1
 
     // Waiters Table
     auto* waitersGroup = new QGroupBox("Stan kelnerow");
@@ -75,8 +76,9 @@ void ClientWindow::setupUi()
     waitersTable_ = new QTableWidget(0, 4);
     waitersTable_->setHorizontalHeaderLabels({"Kelner", "Stan", "ID", "Danie"});
     waitersTable_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    waitersTable_->setMinimumHeight(150);
     waitersLayout->addWidget(waitersTable_);
-    root->addWidget(waitersGroup);
+    root->addWidget(waitersGroup, 1); // Give stretch factor 1
 
     connect(connectBtn_, &QPushButton::clicked, this, &ClientWindow::toggleConnection);
 
