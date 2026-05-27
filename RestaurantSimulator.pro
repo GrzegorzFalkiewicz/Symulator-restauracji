@@ -1,4 +1,4 @@
-QT += widgets
+QT += widgets network
 
 CONFIG += c++17
 CONFIG -= app_bundle
@@ -19,3 +19,8 @@ HEADERS += \
     src/simulationengine.h \
     src/graphicsobjects.h \
     src/restaurantview.h
+
+# --- Dodatkowe pliki klienta (mozna skompilowac jako osobny projekt) ---
+# src/client_main.cpp
+# src/clientwindow.h
+# src/clientwindow.cpp

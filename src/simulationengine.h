@@ -15,6 +15,9 @@
 #include <thread>
 #include <vector>
 
+#include <QTcpServer>
+#include <QTcpSocket>
+
 struct WorkerSnapshot {
     QString name;
     QString status;
@@ -66,10 +69,14 @@ private:
     QString randomDish();
     int randomDelayMs(int minMs, int maxMs);
     void sleepScaled(int ms);
+    void broadcastSnapshot(const SimulationSnapshot& snapshot);
 
     QObject* receiver_;
     SnapshotCallback callback_;
 
+    QTcpServer* tcpServer_ = nullptr;
+    QList<QTcpSocket*> clients_;
+    
     mutable std::mutex mutex_;
     std::condition_variable newOrderCv_;
     std::condition_variable kitchenCv_;

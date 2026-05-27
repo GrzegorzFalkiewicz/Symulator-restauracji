@@ -1,6 +1,9 @@
 #include "simulationengine.h"
 
 #include <QDateTime>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMetaObject>
 
 #include <chrono>
@@ -11,6 +14,7 @@ namespace {
 constexpr int CookCount = 3;
 constexpr int WaiterCount = 2;
 constexpr int MaxLogEntries = 80;
+constexpr quint16 ServerPort = 12345;
 
 std::mt19937& randomEngine()
 {
@@ -24,6 +28,24 @@ std::mt19937& randomEngine()
 SimulationEngine::SimulationEngine(QObject* receiver, SnapshotCallback callback)
     : receiver_(receiver), callback_(std::move(callback))
 {
+    // Initialize Distributed Server
+    tcpServer_ = new QTcpServer(receiver_);
+    QObject::connect(tcpServer_, &QTcpServer::newConnection, [this] {
+        while (tcpServer_->hasPendingConnections()) {
+            QTcpSocket* socket = tcpServer_->nextPendingConnection();
+            clients_.append(socket);
+            QObject::connect(socket, &QTcpSocket::disconnected, [this, socket] {
+                clients_.removeAll(socket);
+                socket->deleteLater();
+            });
+            addLogLocked(QString("Nowy klient rozproszony polaczony: %1").arg(socket->peerAddress().toString()));
+        }
+    });
+    
+    if (tcpServer_->listen(QHostAddress::Any, ServerPort)) {
+        addLogLocked(QString("Serwer rozproszony nasluchuje na porcie %1").arg(ServerPort));
+    }
+
     std::lock_guard<std::mutex> lock(mutex_);
     resetLocked();
 }
@@ -313,9 +335,40 @@ void SimulationEngine::postUpdate()
         return;
     }
 
-    QMetaObject::invokeMethod(receiver_, [callback = callback_, snapshot] {
+    QMetaObject::invokeMethod(receiver_, [this, callback = callback_, snapshot] {
         callback(snapshot);
+        broadcastSnapshot(snapshot);
     }, Qt::QueuedConnection);
+}
+
+void SimulationEngine::broadcastSnapshot(const SimulationSnapshot& snapshot)
+{
+    if (clients_.isEmpty()) return;
+
+    QJsonObject obj;
+    obj["running"] = snapshot.running;
+    obj["created"] = snapshot.createdOrders;
+    obj["served"] = snapshot.servedOrders;
+    obj["waiting"] = snapshot.waitingOrders;
+    obj["kitchen"] = snapshot.kitchenOrders;
+    obj["ready"] = snapshot.readyOrders;
+
+    QJsonArray cooks;
+    for (const auto& c : snapshot.cooks) {
+        QJsonObject co;
+        co["name"] = c.name;
+        co["status"] = c.status;
+        co["orderId"] = c.orderId;
+        cooks.append(co);
+    }
+    obj["cooks"] = cooks;
+
+    QJsonDocument doc(obj);
+    QByteArray data = doc.toJson(QJsonDocument::Compact) + "\n";
+
+    for (QTcpSocket* client : clients_) {
+        client->write(data);
+    }
 }
 
 SimulationSnapshot SimulationEngine::snapshotLocked() const
