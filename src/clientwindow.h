@@ -33,4 +33,5 @@ private:
     QLabel* servedLabel_;
     QLabel* queueLabel_;
     QTableWidget* cooksTable_;
+    QTableWidget* waitersTable_;
 };

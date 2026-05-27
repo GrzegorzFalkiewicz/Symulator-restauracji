@@ -23,7 +23,7 @@ ClientWindow::ClientWindow(QWidget* parent) : QWidget(parent)
 void ClientWindow::setupUi()
 {
     setWindowTitle("Zdalny Monitor Restauracji (KLIENT)");
-    resize(550, 450);
+    resize(700, 650);
 
     auto* root = new QVBoxLayout(this);
 
@@ -61,23 +61,34 @@ void ClientWindow::setupUi()
     root->addWidget(statsGroup);
 
     // Cooks Table
-    cooksTable_ = new QTableWidget(0, 3);
-    cooksTable_->setHorizontalHeaderLabels({"Kucharz", "Stan", "ID"});
+    auto* cooksGroup = new QGroupBox("Stan kucharzy");
+    auto* cooksLayout = new QVBoxLayout(cooksGroup);
+    cooksTable_ = new QTableWidget(0, 4);
+    cooksTable_->setHorizontalHeaderLabels({"Kucharz", "Stan", "ID", "Danie"});
     cooksTable_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    root->addWidget(new QLabel("Stan kucharzy (dane zdalne):"));
-    root->addWidget(cooksTable_);
+    cooksLayout->addWidget(cooksTable_);
+    root->addWidget(cooksGroup);
+
+    // Waiters Table
+    auto* waitersGroup = new QGroupBox("Stan kelnerow");
+    auto* waitersLayout = new QVBoxLayout(waitersGroup);
+    waitersTable_ = new QTableWidget(0, 4);
+    waitersTable_->setHorizontalHeaderLabels({"Kelner", "Stan", "ID", "Danie"});
+    waitersTable_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    waitersLayout->addWidget(waitersTable_);
+    root->addWidget(waitersGroup);
 
     connect(connectBtn_, &QPushButton::clicked, this, &ClientWindow::toggleConnection);
 
     // Dark theme for client
     setStyleSheet(R"(
         QWidget { background-color: #21252b; color: #abb2bf; font-size: 10pt; }
-        QGroupBox { border: 1px solid #3e4451; margin-top: 10px; font-weight: bold; }
+        QGroupBox { border: 1px solid #3e4451; margin-top: 10px; font-weight: bold; color: #61afef; }
         QPushButton { background-color: #3e4451; padding: 5px; border-radius: 3px; color: white; min-width: 70px; }
         QPushButton:hover { background-color: #4b5263; }
         QLineEdit { background-color: #282c34; border: 1px solid #3e4451; padding: 3px; color: #d7dae0; border-radius: 2px; }
         QTableWidget { background-color: #282c34; gridline-color: #3e4451; border: none; }
-        QHeaderView::section { background-color: #21252b; border: 1px solid #3e4451; padding: 4px; }
+        QHeaderView::section { background-color: #21252b; border: 1px solid #3e4451; padding: 4px; color: #abb2bf; }
     )");
 }
 
@@ -130,12 +141,19 @@ void ClientWindow::updateDashboard(const QJsonObject& data)
     servedLabel_->setText(QString::number(data["served"].toInt()));
     queueLabel_->setText(QString::number(data["kitchen"].toInt()));
 
-    QJsonArray cooks = data["cooks"].toArray();
-    cooksTable_->setRowCount(cooks.size());
-    for (int i = 0; i < cooks.size(); ++i) {
-        QJsonObject c = cooks[i].toObject();
-        cooksTable_->setItem(i, 0, new QTableWidgetItem(c["name"].toString()));
-        cooksTable_->setItem(i, 1, new QTableWidgetItem(c["status"].toString()));
-        cooksTable_->setItem(i, 2, new QTableWidgetItem(QString::number(c["orderId"].toInt())));
-    }
+    // Helper for tables
+    auto updateTable = [](QTableWidget* table, const QJsonArray& arr) {
+        table->setRowCount(arr.size());
+        for (int i = 0; i < arr.size(); ++i) {
+            QJsonObject o = arr[i].toObject();
+            table->setItem(i, 0, new QTableWidgetItem(o["name"].toString()));
+            table->setItem(i, 1, new QTableWidgetItem(o["status"].toString()));
+            int id = o["orderId"].toInt();
+            table->setItem(i, 2, new QTableWidgetItem(id > 0 ? QString("#%1").arg(id) : "-"));
+            table->setItem(i, 3, new QTableWidgetItem(o["dish"].toString()));
+        }
+    };
+
+    updateTable(cooksTable_, data["cooks"].toArray());
+    updateTable(waitersTable_, data["waiters"].toArray());
 }

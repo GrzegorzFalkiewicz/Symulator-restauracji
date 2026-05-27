@@ -359,9 +359,21 @@ void SimulationEngine::broadcastSnapshot(const SimulationSnapshot& snapshot)
         co["name"] = c.name;
         co["status"] = c.status;
         co["orderId"] = c.orderId;
+        co["dish"] = c.dish;
         cooks.append(co);
     }
     obj["cooks"] = cooks;
+
+    QJsonArray waiters;
+    for (const auto& w : snapshot.waiters) {
+        QJsonObject wo;
+        wo["name"] = w.name;
+        wo["status"] = w.status;
+        wo["orderId"] = w.orderId;
+        wo["dish"] = w.dish;
+        waiters.append(wo);
+    }
+    obj["waiters"] = waiters;
 
     QJsonDocument doc(obj);
     QByteArray data = doc.toJson(QJsonDocument::Compact) + "\n";
