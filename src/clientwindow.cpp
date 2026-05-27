@@ -23,7 +23,7 @@ ClientWindow::ClientWindow(QWidget* parent) : QWidget(parent)
 void ClientWindow::setupUi()
 {
     setWindowTitle("Zdalny Monitor Restauracji (KLIENT)");
-    resize(500, 400);
+    resize(550, 450);
 
     auto* root = new QVBoxLayout(this);
 
@@ -31,10 +31,16 @@ void ClientWindow::setupUi()
     auto* header = new QHBoxLayout();
     statusLabel_ = new QLabel("Status: Rozlaczony");
     statusLabel_->setStyleSheet("color: #e06c75; font-weight: bold;");
-    connectBtn_ = new QPushButton("Polacz z serwerem");
     
     header->addWidget(statusLabel_);
     header->addStretch();
+    
+    header->addWidget(new QLabel("IP:"));
+    ipInput_ = new QLineEdit("127.0.0.1");
+    ipInput_->setFixedWidth(120);
+    header->addWidget(ipInput_);
+
+    connectBtn_ = new QPushButton("Polacz");
     header->addWidget(connectBtn_);
     root->addLayout(header);
 
@@ -67,17 +73,22 @@ void ClientWindow::setupUi()
     setStyleSheet(R"(
         QWidget { background-color: #21252b; color: #abb2bf; font-size: 10pt; }
         QGroupBox { border: 1px solid #3e4451; margin-top: 10px; font-weight: bold; }
-        QPushButton { background-color: #3e4451; padding: 5px; border-radius: 3px; color: white; }
-        QTableWidget { background-color: #282c34; gridline-color: #3e4451; }
-        QHeaderView::section { background-color: #21252b; }
+        QPushButton { background-color: #3e4451; padding: 5px; border-radius: 3px; color: white; min-width: 70px; }
+        QPushButton:hover { background-color: #4b5263; }
+        QLineEdit { background-color: #282c34; border: 1px solid #3e4451; padding: 3px; color: #d7dae0; border-radius: 2px; }
+        QTableWidget { background-color: #282c34; gridline-color: #3e4451; border: none; }
+        QHeaderView::section { background-color: #21252b; border: 1px solid #3e4451; padding: 4px; }
     )");
 }
 
 void ClientWindow::toggleConnection()
 {
     if (socket_->state() == QAbstractSocket::UnconnectedState) {
-        socket_->connectToHost("127.0.0.1", 12345);
+        QString ip = ipInput_->text().trimmed();
+        if (ip.isEmpty()) ip = "127.0.0.1";
+        socket_->connectToHost(ip, 12345);
         connectBtn_->setText("Laczenie...");
+        ipInput_->setEnabled(false);
     } else {
         socket_->disconnectFromHost();
     }
@@ -94,7 +105,8 @@ void ClientWindow::onDisconnected()
 {
     statusLabel_->setText("Status: Rozlaczony");
     statusLabel_->setStyleSheet("color: #e06c75; font-weight: bold;");
-    connectBtn_->setText("Polacz z serwerem");
+    connectBtn_->setText("Polacz");
+    ipInput_->setEnabled(true);
 }
 
 void ClientWindow::onReadyRead()

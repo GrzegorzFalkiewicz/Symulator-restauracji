@@ -3,7 +3,8 @@
 #include <QWidget>
 #include <QTcpSocket>
 #include <QLabel>
-#include <QTextEdit>
+#include <QPushButton>
+#include <QLineEdit>
 #include <QTableWidget>
 
 class ClientWindow : public QWidget {
@@ -25,6 +26,7 @@ private:
     QTcpSocket* socket_;
     
     // UI Elements
+    QLineEdit* ipInput_;
     QPushButton* connectBtn_;
     QLabel* statusLabel_;
     QLabel* createdLabel_;
