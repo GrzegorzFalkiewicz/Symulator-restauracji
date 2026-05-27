@@ -70,6 +70,21 @@ int main(int argc, char* argv[])
             color: #ce9178;
             font-weight: bold;
         }
+        QSlider::groove:horizontal {
+            border: 1px solid #333333;
+            height: 4px;
+            background: #252525;
+            margin: 2px 0;
+            border-radius: 2px;
+        }
+        QSlider::handle:horizontal {
+            background: #569cd6;
+            border: 1px solid #569cd6;
+            width: 14px;
+            height: 14px;
+            margin: -6px 0;
+            border-radius: 7px;
+        }
     )");
 
     MainWindow window;

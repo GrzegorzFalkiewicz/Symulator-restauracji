@@ -103,6 +103,12 @@ void WorkerItem::moveTo(const QPointF& endPos)
     animation_->start();
 }
 
+void WorkerItem::setAnimationSpeed(float multiplier)
+{
+    if (multiplier <= 0) multiplier = 1.0f;
+    animation_->setDuration(static_cast<int>(600 / multiplier));
+}
+
 StationItem::StationItem(const QString& label, const QColor& color)
     : label_(label), color_(color)
 {

@@ -17,6 +17,7 @@ public:
 
     void updateStatus(const QString& status, int orderId, const QString& dish);
     void moveTo(const QPointF& endPos);
+    void setAnimationSpeed(float multiplier);
 
 private:
     Role role_;

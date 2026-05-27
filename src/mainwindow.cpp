@@ -7,6 +7,7 @@
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QHBoxLayout>
+#include <QSlider>
 #include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget* parent)
@@ -34,6 +35,19 @@ void MainWindow::buildUi()
     statusFont.setBold(true);
     statusLabel_->setFont(statusFont);
 
+    // Speed Control
+    auto* speedLayout = new QHBoxLayout();
+    speedLayout->setContentsMargins(20, 0, 20, 0);
+    speedLayout->addWidget(new QLabel("Predkosc:"));
+    speedSlider_ = new QSlider(Qt::Horizontal);
+    speedSlider_->setRange(5, 50); // 0.5x to 5.0x
+    speedSlider_->setValue(10);    // 1.0x
+    speedSlider_->setFixedWidth(150);
+    speedValueLabel_ = new QLabel("1.0x");
+    speedValueLabel_->setFixedWidth(40);
+    speedLayout->addWidget(speedSlider_);
+    speedLayout->addWidget(speedValueLabel_);
+
     startButton_ = new QPushButton("Start");
     stopButton_ = new QPushButton("Stop");
     resetButton_ = new QPushButton("Reset");
@@ -41,6 +55,7 @@ void MainWindow::buildUi()
 
     header->addWidget(statusLabel_);
     header->addStretch();
+    header->addLayout(speedLayout);
     header->addWidget(startButton_);
     header->addWidget(stopButton_);
     header->addWidget(resetButton_);
@@ -98,6 +113,13 @@ void MainWindow::buildUi()
     connect(startButton_, &QPushButton::clicked, this, [this] { engine_.start(); });
     connect(stopButton_, &QPushButton::clicked, this, [this] { engine_.stop(); });
     connect(resetButton_, &QPushButton::clicked, this, [this] { engine_.reset(); });
+
+    connect(speedSlider_, &QSlider::valueChanged, this, [this](int value) {
+        float multiplier = value / 10.0f;
+        speedValueLabel_->setText(QString("%1x").arg(multiplier, 0, 'f', 1));
+        engine_.setSpeedMultiplier(multiplier);
+        restaurantView_->setSpeedMultiplier(multiplier);
+    });
 }
 
 QTableWidget* MainWindow::createWorkerTable(const QStringList& headers)

@@ -114,6 +114,17 @@ void SimulationEngine::reset()
     postUpdate();
 }
 
+void SimulationEngine::setSpeedMultiplier(float multiplier)
+{
+    speedMultiplier_.store(multiplier);
+}
+
+void SimulationEngine::sleepScaled(int ms)
+{
+    int scaledMs = static_cast<int>(ms / speedMultiplier_.load());
+    std::this_thread::sleep_for(std::chrono::milliseconds(scaledMs));
+}
+
 void SimulationEngine::resetLocked()
 {
     newOrders_ = std::queue<Order>{};
@@ -149,7 +160,8 @@ void SimulationEngine::generatorLoop()
 {
     while (!stopRequested_) {
         std::unique_lock<std::mutex> timerLock(mutex_);
-        timerCv_.wait_for(timerLock, std::chrono::milliseconds(900), [this] {
+        int waitMs = static_cast<int>(900 / speedMultiplier_.load());
+        timerCv_.wait_for(timerLock, std::chrono::milliseconds(waitMs), [this] {
             return stopRequested_.load();
         });
         if (stopRequested_) {
@@ -194,7 +206,7 @@ void SimulationEngine::cookLoop(int index)
         }
         postUpdate();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(randomDelayMs(1800, 3600)));
+        sleepScaled(randomDelayMs(1800, 3600));
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -205,7 +217,7 @@ void SimulationEngine::cookLoop(int index)
         }
         postUpdate();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(randomDelayMs(600, 1000)));
+        sleepScaled(randomDelayMs(600, 1000));
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -262,8 +274,7 @@ void SimulationEngine::waiterLoop(int index)
         }
         postUpdate();
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(
-            deliveringReadyOrder ? randomDelayMs(700, 1300) : randomDelayMs(500, 1100)));
+        sleepScaled(deliveringReadyOrder ? randomDelayMs(700, 1300) : randomDelayMs(500, 1100));
 
         {
             std::lock_guard<std::mutex> lock(mutex_);

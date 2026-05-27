@@ -44,6 +44,7 @@ public:
     void start();
     void stop();
     void reset();
+    void setSpeedMultiplier(float multiplier);
 
 private:
     struct WorkerState {
@@ -64,6 +65,7 @@ private:
     void addLogLocked(const QString& message);
     QString randomDish();
     int randomDelayMs(int minMs, int maxMs);
+    void sleepScaled(int ms);
 
     QObject* receiver_;
     SnapshotCallback callback_;
@@ -83,6 +85,7 @@ private:
 
     std::atomic_bool running_{false};
     std::atomic_bool stopRequested_{false};
+    std::atomic<float> speedMultiplier_{1.0f};
     std::thread generatorThread_;
     std::vector<std::thread> cookThreads_;
     std::vector<std::thread> waiterThreads_;

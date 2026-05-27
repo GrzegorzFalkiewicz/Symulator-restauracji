@@ -13,6 +13,7 @@ public:
     explicit RestaurantView(QWidget* parent = nullptr);
 
     void updateSnapshot(const SimulationSnapshot& snapshot);
+    void setSpeedMultiplier(float multiplier);
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
@@ -27,4 +28,5 @@ private:
     StationItem* kitchenStation_;
     StationItem* counterStation_;
     StationItem* tableStation_;
+    float currentMultiplier_ = 1.0f;
 };

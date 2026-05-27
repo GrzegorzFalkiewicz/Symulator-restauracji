@@ -46,6 +46,14 @@ void RestaurantView::updateSnapshot(const SimulationSnapshot& snapshot)
     updateWorkers(snapshot.waiters, WorkerItem::Role::Waiter);
 }
 
+void RestaurantView::setSpeedMultiplier(float multiplier)
+{
+    currentMultiplier_ = multiplier;
+    for (auto* worker : workers_) {
+        worker->setAnimationSpeed(multiplier);
+    }
+}
+
 void RestaurantView::updateWorkers(const QVector<WorkerSnapshot>& snapshots, WorkerItem::Role role)
 {
     for (int i = 0; i < snapshots.size(); ++i) {
@@ -54,6 +62,7 @@ void RestaurantView::updateWorkers(const QVector<WorkerSnapshot>& snapshots, Wor
 
         if (!workers_.contains(snap.name)) {
             item = new WorkerItem(role, snap.name);
+            item->setAnimationSpeed(currentMultiplier_);
             scene_->addItem(item);
             workers_[snap.name] = item;
             
