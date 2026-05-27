@@ -45,10 +45,12 @@ void SimulationEngine::start()
         for (auto& cook : cooks_) {
             cook.status = "Czeka na zamowienie";
             cook.orderId = 0;
+            cook.dish = "";
         }
         for (auto& waiter : waiters_) {
             waiter.status = "Czeka na klienta";
             waiter.orderId = 0;
+            waiter.dish = "";
         }
         addLogLocked("Symulacja uruchomiona");
     }
@@ -89,10 +91,12 @@ void SimulationEngine::stop()
         for (auto& cook : cooks_) {
             cook.status = "Zatrzymany";
             cook.orderId = 0;
+            cook.dish = "";
         }
         for (auto& waiter : waiters_) {
             waiter.status = "Zatrzymany";
             waiter.orderId = 0;
+            waiter.dish = "";
         }
         addLogLocked("Symulacja zatrzymana");
     }
@@ -123,10 +127,10 @@ void SimulationEngine::resetLocked()
     cooks_.clear();
     waiters_.clear();
     for (int i = 0; i < CookCount; ++i) {
-        cooks_.push_back({QString("Kucharz %1").arg(i + 1), "Bezczynny", 0});
+        cooks_.push_back({QString("Kucharz %1").arg(i + 1), "Bezczynny", 0, ""});
     }
     for (int i = 0; i < WaiterCount; ++i) {
-        waiters_.push_back({QString("Kelner %1").arg(i + 1), "Bezczynny", 0});
+        waiters_.push_back({QString("Kelner %1").arg(i + 1), "Bezczynny", 0, ""});
     }
 }
 
@@ -185,6 +189,7 @@ void SimulationEngine::cookLoop(int index)
             kitchenOrders_.pop();
             cooks_[index].status = "Przygotowuje";
             cooks_[index].orderId = order.id;
+            cooks_[index].dish = order.dish;
             addLogLocked(QString("Kucharz rozpoczal zamowienie #%1").arg(order.id));
         }
         postUpdate();
@@ -199,6 +204,7 @@ void SimulationEngine::cookLoop(int index)
             readyOrders_.push(order);
             cooks_[index].status = "Oddal danie";
             cooks_[index].orderId = order.id;
+            cooks_[index].dish = order.dish;
             addLogLocked(QString("Gotowe danie dla zamowienia #%1").arg(order.id));
         }
         newOrderCv_.notify_one();
@@ -230,12 +236,14 @@ void SimulationEngine::waiterLoop(int index)
                 deliveringReadyOrder = true;
                 waiters_[index].status = "Dostarcza danie";
                 waiters_[index].orderId = order.id;
+                waiters_[index].dish = order.dish;
                 addLogLocked(QString("Kelner odbiera gotowe zamowienie #%1").arg(order.id));
             } else if (!newOrders_.empty()) {
                 order = newOrders_.front();
                 newOrders_.pop();
                 waiters_[index].status = "Przekazuje do kuchni";
                 waiters_[index].orderId = order.id;
+                waiters_[index].dish = order.dish;
                 addLogLocked(QString("Kelner przyjal zamowienie #%1").arg(order.id));
             } else {
                 continue;
@@ -299,10 +307,10 @@ SimulationSnapshot SimulationEngine::snapshotLocked() const
     snapshot.servedOrders = servedOrders_;
 
     for (const auto& cook : cooks_) {
-        snapshot.cooks.push_back({cook.name, cook.status, cook.orderId});
+        snapshot.cooks.push_back({cook.name, cook.status, cook.orderId, cook.dish});
     }
     for (const auto& waiter : waiters_) {
-        snapshot.waiters.push_back({waiter.name, waiter.status, waiter.orderId});
+        snapshot.waiters.push_back({waiter.name, waiter.status, waiter.orderId, waiter.dish});
     }
     snapshot.log = log_;
     return snapshot;

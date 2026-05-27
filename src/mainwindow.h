@@ -8,6 +8,8 @@
 #include <QTableWidget>
 #include <QWidget>
 
+class RestaurantView;
+
 class MainWindow : public QWidget {
 public:
     explicit MainWindow(QWidget* parent = nullptr);
@@ -21,6 +23,7 @@ private:
 
     SimulationEngine engine_;
 
+    RestaurantView* restaurantView_ = nullptr;
     QLabel* statusLabel_ = nullptr;
     QLabel* createdLabel_ = nullptr;
     QLabel* waitingLabel_ = nullptr;

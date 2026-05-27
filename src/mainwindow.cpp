@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "restaurantview.h"
 
 #include <QAbstractItemView>
 #include <QApplication>
@@ -19,7 +20,7 @@ MainWindow::MainWindow(QWidget* parent)
 void MainWindow::buildUi()
 {
     setWindowTitle("Wielowatkowy symulator restauracji");
-    resize(980, 640);
+    resize(1100, 800);
 
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(14, 14, 14, 14);
@@ -27,6 +28,7 @@ void MainWindow::buildUi()
 
     auto* header = new QHBoxLayout();
     statusLabel_ = new QLabel("Status: bezczynny");
+    statusLabel_->setObjectName("statusLabel");
     QFont statusFont = statusLabel_->font();
     statusFont.setPointSize(12);
     statusFont.setBold(true);
@@ -44,24 +46,29 @@ void MainWindow::buildUi()
     header->addWidget(resetButton_);
     root->addLayout(header);
 
+    // Visualisation
+    auto* visualGroup = new QGroupBox("Podglad restauracji");
+    auto* visualLayout = new QVBoxLayout(visualGroup);
+    restaurantView_ = new RestaurantView();
+    visualLayout->addWidget(restaurantView_);
+    root->addWidget(visualGroup, 4);
+
     auto* statsGroup = new QGroupBox("Stan zamowien");
     auto* statsGrid = new QGridLayout(statsGroup);
-    createdLabel_ = new QLabel("0");
-    waitingLabel_ = new QLabel("0");
-    kitchenLabel_ = new QLabel("0");
-    readyLabel_ = new QLabel("0");
-    servedLabel_ = new QLabel("0");
+    
+    auto createStatLabel = [this](const QString& text, QLabel*& valLabel, int r, int c) {
+        statsGrid->addWidget(new QLabel(text), r, c);
+        valLabel = new QLabel("0");
+        valLabel->setObjectName("statValue");
+        statsGrid->addWidget(valLabel, r, c + 1);
+    };
 
-    statsGrid->addWidget(new QLabel("Utworzone:"), 0, 0);
-    statsGrid->addWidget(createdLabel_, 0, 1);
-    statsGrid->addWidget(new QLabel("U kelnerow:"), 0, 2);
-    statsGrid->addWidget(waitingLabel_, 0, 3);
-    statsGrid->addWidget(new QLabel("W kolejce kuchni:"), 1, 0);
-    statsGrid->addWidget(kitchenLabel_, 1, 1);
-    statsGrid->addWidget(new QLabel("Gotowe:"), 1, 2);
-    statsGrid->addWidget(readyLabel_, 1, 3);
-    statsGrid->addWidget(new QLabel("Obsluzone:"), 2, 0);
-    statsGrid->addWidget(servedLabel_, 2, 1);
+    createStatLabel("Utworzone:", createdLabel_, 0, 0);
+    createStatLabel("U kelnerow:", waitingLabel_, 0, 2);
+    createStatLabel("W kolejce kuchni:", kitchenLabel_, 1, 0);
+    createStatLabel("Gotowe:", readyLabel_, 1, 2);
+    createStatLabel("Obsluzone:", servedLabel_, 2, 0);
+    
     root->addWidget(statsGroup);
 
     auto* workersLayout = new QHBoxLayout();
@@ -77,13 +84,16 @@ void MainWindow::buildUi()
 
     workersLayout->addWidget(cooksGroup, 3);
     workersLayout->addWidget(waitersGroup, 2);
-    root->addLayout(workersLayout, 1);
-
+    
     auto* logGroup = new QGroupBox("Zdarzenia");
     auto* logLayout = new QVBoxLayout(logGroup);
     logList_ = new QListWidget();
     logLayout->addWidget(logList_);
-    root->addWidget(logGroup, 2);
+    
+    auto* bottomLayout = new QHBoxLayout();
+    bottomLayout->addLayout(workersLayout, 3);
+    bottomLayout->addWidget(logGroup, 2);
+    root->addLayout(bottomLayout, 3);
 
     connect(startButton_, &QPushButton::clicked, this, [this] { engine_.start(); });
     connect(stopButton_, &QPushButton::clicked, this, [this] { engine_.stop(); });
@@ -124,6 +134,9 @@ void MainWindow::applySnapshot(const SimulationSnapshot& snapshot)
     for (const auto& entry : snapshot.log) {
         logList_->addItem(entry);
     }
+    logList_->scrollToBottom();
+
+    restaurantView_->updateSnapshot(snapshot);
 }
 
 void MainWindow::fillWorkerTable(QTableWidget* table, const QVector<WorkerSnapshot>& workers)

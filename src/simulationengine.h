@@ -19,6 +19,7 @@ struct WorkerSnapshot {
     QString name;
     QString status;
     int orderId = 0;
+    QString dish;
 };
 
 struct SimulationSnapshot {
@@ -49,6 +50,7 @@ private:
         QString name;
         QString status = "Bezczynny";
         int orderId = 0;
+        QString dish;
     };
 
     void resetLocked();
